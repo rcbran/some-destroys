@@ -1,5 +1,5 @@
 import { Html } from '@react-three/drei'
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useLayoutEffect, useState } from 'react'
 import gsap from 'gsap'
 import type { ChangeEvent, Dispatch, SetStateAction, KeyboardEvent } from 'react'
 import styles from './IntroGate.module.css'
@@ -32,7 +32,7 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
     }
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!refsReady) {
       return
     }
@@ -44,15 +44,13 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
       return
     }
 
-    // Prevent double-creation in StrictMode
-    if (textEl.children.length > 0) {
-      return
-    }
+    // Ensure a clean slate (important for StrictMode mount/unmount cycles)
+    textEl.innerHTML = ''
 
     // Split text into individual characters
     const message = 'Not all magic protects.'
     const chars: HTMLSpanElement[] = []
-    
+
     message.split('').forEach((char) => {
       const span = document.createElement('span')
       span.textContent = char === ' ' ? '\u00A0' : char
@@ -61,32 +59,43 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
       chars.push(span)
     })
 
-    const timeline = gsap.timeline()
+    const ctx = gsap.context(() => {
+      const timeline = gsap.timeline()
 
-    // Random scatter animation with initial delay
-    timeline
-      .from(chars, {
-        x: () => gsap.utils.random(-30, 30),
-        y: () => gsap.utils.random(-30, 30),
-        opacity: 0,
-        rotation: () => gsap.utils.random(-15, 15),
-        duration: 1,
-        stagger: 0.06,
-        delay: 1,
-        ease: 'power2.out',
-      })
-      .to(inputEl, {
-        autoAlpha: 1,
-        duration: 0.6,
-        delay: 1,
-        ease: 'power2.out',
-        onComplete: () => {
-          inputEl.focus()
-        },
-      })
+      // Ensure input starts hidden. We'll reveal it after the text animation completes.
+      gsap.set(inputEl, { autoAlpha: 0 })
+
+      // Random scatter animation with initial delay
+      timeline
+        .from(chars, {
+          x: () => gsap.utils.random(-50, 50),
+          y: () => gsap.utils.random(-50, 50),
+          opacity: 0,
+          rotation: () => gsap.utils.random(-25, 25),
+          duration: 1,
+          stagger: 0.06,
+          delay: 0.75,
+          ease: 'power2.out',
+        })
+        // Fade input in AFTER text finishes, with a 1s pause
+        .to(
+          inputEl,
+          {
+            autoAlpha: 1,
+            duration: 0.6,
+            ease: 'power2.out',
+            onComplete: () => {
+              // inputEl.focus()
+            },
+          },
+          '+=1'
+        )
+    }, textEl)
 
     return () => {
-      timeline.kill()
+      ctx.revert()
+      // Remove dynamically created spans so re-mounts start clean
+      textEl.innerHTML = ''
     }
   }, [refsReady])
 
@@ -96,7 +105,9 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      onUnlock()
+      if (value.trim().toLowerCase() === target) {
+        onUnlock()
+      }
     }
   }
 
