@@ -1,3 +1,4 @@
+/* Main container - centers content in fullscreen overlay */
 .panel {
   display: flex;
   flex-direction: column;
@@ -10,6 +11,7 @@
   border-radius: 0.75rem;
 }
 
+/* Prompt container - holds text, input, and ember trail */
 .prompt {
   position: relative;
   display: flex;
@@ -21,11 +23,28 @@
   color: #f6f6f6;
 }
 
+/* Text container for animated character reveal */
 .promptText {
   white-space: nowrap;
   display: inline-block;
 }
 
+/* Individual character styling with smooth transitions */
+.promptText span {
+  transition: color 0.15s ease-out, text-shadow 0.15s ease-out;
+}
+
+/* Hot glow effect applied when ember passes below character */
+.promptText span.hot {
+  color: #fffef8;
+  opacity: 0.9;
+  text-shadow:
+    0 0 4px rgba(255, 255, 240, 0.8),
+    0 0 8px rgba(255, 200, 80, 0.6),
+    0 0 12px rgba(255, 120, 40, 0.4);
+}
+
+/* Input field - starts hidden, fades in after text animation */
 .input {
   visibility: hidden;
   opacity: 0;
@@ -34,11 +53,16 @@
   border: none;
   border-bottom: 2px solid rgba(255, 255, 255, 0.35);
   background: transparent;
-  color: #f6f6f6;
+  color: #fffef8;
+  text-shadow:
+    0 0 4px rgba(255, 255, 240, 0.8),
+    0 0 8px rgba(255, 200, 80, 0.6),
+    0 0 12px rgba(255, 120, 40, 0.4);
   text-align: left;
   font-size: 1.5rem;
   font-weight: 500;
   outline: none;
+  transition: color 0.15s ease-out, text-shadow 0.15s ease-out, opacity 0.6s ease-out;
 }
 
 .input::placeholder {
@@ -46,7 +70,11 @@
   letter-spacing: 0.3em;
 }
 
-/* Ember mote - horizontal sweep below text */
+/* ============================================
+   EMBER TRAIL SYSTEM
+   ============================================ */
+
+/* Ember container - positioned below text, starts hidden */
 .mote {
   position: absolute;
   left: 50%;
@@ -57,14 +85,14 @@
   visibility: hidden;
 }
 
-/* Container holds all trailing embers */
+/* Container for all trailing embers - zero size to avoid layout impact */
 .trail {
   position: relative;
   width: 0;
   height: 0;
 }
 
-/* Base ember style */
+/* Base ember style - all embers share this animation and positioning */
 .ember {
   position: absolute;
   border-radius: 50%;
@@ -73,8 +101,13 @@
   animation-play-state: paused;
 }
 
+/* ============================================
+   EMBER TRAIL GRADIENT
+   Each ember gets progressively cooler, smaller, and dimmer
+   Creates realistic fire-to-smoke color transition
+   ============================================ */
 
-/* Lead ember - hottest white/yellow core */
+/* Lead ember - hottest white/yellow core with intense glow */
 .ember:nth-child(1) {
   width: 6px;
   height: 6px;
@@ -214,6 +247,10 @@
   opacity: 0.26;
   animation-delay: 0.675s;
 }
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 
 /* Horizontal sweep with subtle arc - rises in middle, dips at ends */
 @keyframes sweep {

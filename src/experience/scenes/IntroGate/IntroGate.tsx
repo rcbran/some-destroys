@@ -11,6 +11,11 @@ type IntroGateProps = {
   onUnlock: () => void
 }
 
+// Animation constants
+const TEXT_MESSAGE = 'Not all magic protects.'
+const GLOW_RADIUS = 30 // pixels - proximity needed to trigger hot glow
+const PORTAL_READY_DELAY = 50 // ms - delay for Html portal to mount
+
 const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
   const [mounted, setMounted] = useState(false)
   const hasInitialized = useRef(false)
@@ -18,12 +23,13 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
   const textRef = useRef<HTMLSpanElement>(null)
   const moteRef = useRef<HTMLDivElement>(null)
 
-  // Set mounted after first render with a small delay to ensure Html portal is ready
+  // Wait for Html portal to mount before initializing animations
   useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), 50)
+    const timer = setTimeout(() => setMounted(true), PORTAL_READY_DELAY)
     return () => clearTimeout(timer)
   }, [])
 
+  // Main animation effect - runs once when mounted
   useEffect(() => {
     if (!mounted) return
 
@@ -31,17 +37,22 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
     const textEl = textRef.current
     const moteEl = moteRef.current
 
+    // Early return if refs not ready
     if (!inputEl || !textEl || !moteEl) return
 
     // Prevent double-run in StrictMode
     if (hasInitialized.current) return
+
+    // Get lead ember early - if missing, abort initialization
+    const leadEmber = moteEl.querySelector('[data-ember]') as HTMLElement
+    if (!leadEmber) return
+
+    // Mark as initialized only after all checks pass
     hasInitialized.current = true
 
-    // Split text into individual characters
-    const message = 'Not all magic protects.'
+    // Split text into individual character spans for animation
     const chars: HTMLSpanElement[] = []
-
-    message.split('').forEach((char) => {
+    TEXT_MESSAGE.split('').forEach((char) => {
       const span = document.createElement('span')
       span.textContent = char === ' ' ? '\u00A0' : char
       span.style.display = 'inline-block'
@@ -55,7 +66,31 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
     gsap.set(inputEl, { autoAlpha: 0 })
     gsap.set(moteEl, { autoAlpha: 0 })
 
-    // Random scatter animation with initial delay
+    // Track ember position and apply hot glow to characters as ember passes
+    let animationFrameId: number | undefined
+    const updateTextGlow = () => {
+      if (!leadEmber || !textEl) return
+
+      const emberRect = leadEmber.getBoundingClientRect()
+      const emberCenterX = emberRect.left + emberRect.width / 2
+
+      // Check each character - once hot, it stays hot (skip for performance)
+      for (const char of chars) {
+        if (char.classList.contains(styles.hot)) continue
+
+        const charRect = char.getBoundingClientRect()
+        const charCenterX = charRect.left + charRect.width / 2
+        const distance = Math.abs(emberCenterX - charCenterX)
+
+        if (distance < GLOW_RADIUS) {
+          char.classList.add(styles.hot)
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(updateTextGlow)
+    }
+
+    // Build animation timeline: text scatter → ember fade-in → input fade-in
     timeline
       .from(chars, {
         x: () => gsap.utils.random(-50, 50),
@@ -79,6 +114,8 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
             embers.forEach((el) => {
               ;(el as HTMLElement).style.animationPlayState = 'running'
             })
+            // Start tracking ember position once animation starts
+            updateTextGlow()
           },
         },
         '+=0.2'
@@ -87,7 +124,8 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
       .to(
         inputEl,
         {
-          autoAlpha: 1,
+          visibility: 'visible',
+          opacity: 0.9,
           duration: 0.6,
           ease: 'power2.out',
         },
@@ -95,7 +133,26 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
       )
 
     return () => {
+      // Kill GSAP timeline
       timeline.kill()
+
+      // Cancel animation frame loop
+      if (animationFrameId !== undefined) {
+        cancelAnimationFrame(animationFrameId)
+      }
+
+      // Remove hot glow classes from characters
+      chars.forEach((char) => {
+        char.classList.remove(styles.hot)
+      })
+
+      // Clear dynamically created character spans
+      if (textEl) {
+        textEl.innerHTML = ''
+      }
+
+      // Reset flag to allow animation replay on remount
+      hasInitialized.current = false
     }
   }, [mounted])
 
