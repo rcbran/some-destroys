@@ -1,5 +1,5 @@
 import { Html } from '@react-three/drei'
-import { useRef, useLayoutEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import gsap from 'gsap'
 import type { ChangeEvent, Dispatch, SetStateAction, KeyboardEvent } from 'react'
 import styles from './IntroGate.module.css'
@@ -11,47 +11,48 @@ type IntroGateProps = {
   onUnlock: () => void
 }
 
+// Animation constants
+const TEXT_MESSAGE = 'Not all magic protects.'
+const GLOW_RADIUS = 30 // pixels - proximity needed to trigger hot glow
+const PORTAL_READY_DELAY = 50 // ms - delay for Html portal to mount
+
 const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
-  const [refsReady, setRefsReady] = useState(false)
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const textRef = useRef<HTMLSpanElement | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const hasInitialized = useRef(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const textRef = useRef<HTMLSpanElement>(null)
+  const moteRef = useRef<HTMLDivElement>(null)
 
-  // Callback ref for text span
-  const handleTextRef = (node: HTMLSpanElement | null) => {
-    textRef.current = node
-    if (node && inputRef.current && !refsReady) {
-      setRefsReady(true)
-    }
-  }
+  // Wait for Html portal to mount before initializing animations
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), PORTAL_READY_DELAY)
+    return () => clearTimeout(timer)
+  }, [])
 
-  // Callback ref for input
-  const handleInputRef = (node: HTMLInputElement | null) => {
-    inputRef.current = node
-    if (node && textRef.current && !refsReady) {
-      setRefsReady(true)
-    }
-  }
-
-  useLayoutEffect(() => {
-    if (!refsReady) {
-      return
-    }
+  // Main animation effect - runs once when mounted
+  useEffect(() => {
+    if (!mounted) return
 
     const inputEl = inputRef.current
     const textEl = textRef.current
+    const moteEl = moteRef.current
 
-    if (!inputEl || !textEl) {
-      return
-    }
+    // Early return if refs not ready
+    if (!inputEl || !textEl || !moteEl) return
 
-    // Ensure a clean slate (important for StrictMode mount/unmount cycles)
-    textEl.innerHTML = ''
+    // Prevent double-run in StrictMode
+    if (hasInitialized.current) return
 
-    // Split text into individual characters
-    const message = 'Not all magic protects.'
+    // Get lead ember early - if missing, abort initialization
+    const leadEmber = moteEl.querySelector('[data-ember]') as HTMLElement
+    if (!leadEmber) return
+
+    // Mark as initialized only after all checks pass
+    hasInitialized.current = true
+
+    // Split text into individual character spans for animation
     const chars: HTMLSpanElement[] = []
-
-    message.split('').forEach((char) => {
+    TEXT_MESSAGE.split('').forEach((char) => {
       const span = document.createElement('span')
       span.textContent = char === ' ' ? '\u00A0' : char
       span.style.display = 'inline-block'
@@ -59,65 +60,127 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
       chars.push(span)
     })
 
-    const ctx = gsap.context(() => {
-      const timeline = gsap.timeline()
+    const timeline = gsap.timeline()
 
-      // Ensure input starts hidden. We'll reveal it after the text animation completes.
-      gsap.set(inputEl, { autoAlpha: 0 })
+    // Ensure input and mote start hidden
+    gsap.set(inputEl, { autoAlpha: 0 })
+    gsap.set(moteEl, { autoAlpha: 0 })
 
-      // Random scatter animation with initial delay
-      timeline
-        .from(chars, {
-          x: () => gsap.utils.random(-50, 50),
-          y: () => gsap.utils.random(-50, 50),
-          opacity: 0,
-          rotation: () => gsap.utils.random(-25, 25),
-          duration: 1,
-          stagger: 0.06,
-          delay: 0.75,
+    // Track ember position and apply hot glow to characters as ember passes
+    let animationFrameId: number | undefined
+    const updateTextGlow = () => {
+      if (!leadEmber || !textEl) return
+
+      const emberRect = leadEmber.getBoundingClientRect()
+      const emberCenterX = emberRect.left + emberRect.width / 2
+
+      // Check each character - once hot, it stays hot (skip for performance)
+      for (const char of chars) {
+        if (char.classList.contains(styles.hot)) continue
+
+        const charRect = char.getBoundingClientRect()
+        const charCenterX = charRect.left + charRect.width / 2
+        const distance = Math.abs(emberCenterX - charCenterX)
+
+        if (distance < GLOW_RADIUS) {
+          char.classList.add(styles.hot)
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(updateTextGlow)
+    }
+
+    // Build animation timeline: text scatter → ember fade-in → input fade-in
+    timeline
+      .from(chars, {
+        x: () => gsap.utils.random(-50, 50),
+        y: () => gsap.utils.random(-50, 50),
+        opacity: 0,
+        rotation: () => gsap.utils.random(-25, 25),
+        duration: 1,
+        stagger: 0.06,
+        delay: 0.75,
+        ease: 'power2.out',
+      })
+      // Fade mote in right after text finishes and start ember animation
+      .to(
+        moteEl,
+        {
+          autoAlpha: 1,
+          duration: 0.5,
           ease: 'power2.out',
-        })
-        // Fade input in AFTER text finishes, with a 1s pause
-        .to(
-          inputEl,
-          {
-            autoAlpha: 1,
-            duration: 0.6,
-            ease: 'power2.out',
-            onComplete: () => {
-              // inputEl.focus()
-            },
+          onStart: () => {
+            const embers = moteEl.querySelectorAll('[data-ember]')
+            embers.forEach((el) => {
+              ;(el as HTMLElement).style.animationPlayState = 'running'
+            })
+            // Start tracking ember position once animation starts
+            updateTextGlow()
           },
-          '+=1'
-        )
-    }, textEl)
+        },
+        '+=0.2'
+      )
+      // Fade input in shortly after
+      .to(
+        inputEl,
+        {
+          visibility: 'visible',
+          opacity: 0.9,
+          duration: 0.6,
+          ease: 'power2.out',
+        },
+        '+=0.5'
+      )
 
     return () => {
-      ctx.revert()
-      // Remove dynamically created spans so re-mounts start clean
-      textEl.innerHTML = ''
-    }
-  }, [refsReady])
+      // Kill GSAP timeline
+      timeline.kill()
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setValue(event.target.value)
-  }
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      if (value.trim().toLowerCase() === target) {
-        onUnlock()
+      // Cancel animation frame loop
+      if (animationFrameId !== undefined) {
+        cancelAnimationFrame(animationFrameId)
       }
+
+      // Remove hot glow classes from characters
+      chars.forEach((char) => {
+        char.classList.remove(styles.hot)
+      })
+
+      // Clear dynamically created character spans
+      if (textEl) {
+        textEl.innerHTML = ''
+      }
+
+      // Reset flag to allow animation replay on remount
+      hasInitialized.current = false
     }
-  }
+  }, [mounted])
+
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setValue(event.target.value)
+    },
+    [setValue]
+  )
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        if (value.trim().toLowerCase() === target) {
+          onUnlock()
+        }
+      }
+    },
+    [value, target, onUnlock]
+  )
 
   return (
     <Html fullscreen>
       <div className={styles.panel}>
         <label className={styles.prompt}>
-          <span ref={handleTextRef} className={styles.promptText} />
+          <span ref={textRef} className={styles.promptText} />
           <input
-            ref={handleInputRef}
+            ref={inputRef}
             type="text"
             value={value}
             onChange={handleChange}
@@ -126,6 +189,13 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
             autoComplete="off"
             className={styles.input}
           />
+          <div ref={moteRef} className={styles.mote} aria-hidden="true">
+            <div className={styles.trail}>
+              {Array.from({ length: 10 }, (_, i) => (
+                <div key={i} className={styles.ember} data-ember />
+              ))}
+            </div>
+          </div>
         </label>
       </div>
     </Html>
