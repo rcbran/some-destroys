@@ -48,5 +48,5 @@
 }
 
 .input:focus {
-  border-bottom-color: #ffffff;
+  /* border-bottom-color: #ffffff; */
 }
