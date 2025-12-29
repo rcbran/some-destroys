@@ -7,12 +7,11 @@
   padding: 2rem;
   width: 100%;
   height: 100%;
-  /* background: rgba(10, 10, 12, 0.8); */
   border-radius: 0.75rem;
-  /* box-shadow: 0 0 48px rgba(0, 0, 0, 0.65); */
 }
 
 .prompt {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -47,6 +46,190 @@
   letter-spacing: 0.3em;
 }
 
-.input:focus {
-  /* border-bottom-color: #ffffff; */
+/* Ember mote - horizontal sweep below text */
+.mote {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-top: 40px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Container holds all trailing embers */
+.trail {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+
+/* Base ember style */
+.ember {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-215px, 2px);
+  animation: sweep 4s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+
+
+/* Lead ember - hottest white/yellow core */
+.ember:nth-child(1) {
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, #fffef8 0%, #fff4cc 20%, #ffcc44 50%, #ff6600 80%, transparent 100%);
+  box-shadow:
+    0 0 3px 1px rgba(255, 255, 240, 0.95),
+    0 0 6px 3px rgba(255, 200, 80, 0.8),
+    0 0 12px 5px rgba(255, 120, 40, 0.5),
+    0 0 20px 8px rgba(255, 60, 20, 0.25);
+  animation-delay: 0s;
+}
+
+/* Heat haze under lead ember */
+.ember:nth-child(1)::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 10px;
+  background: radial-gradient(ellipse, rgba(255, 180, 100, 0.35) 0%, rgba(255, 120, 60, 0.15) 50%, transparent 80%);
+  filter: blur(4px);
+  border-radius: 50%;
+  animation: heatHaze 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes heatHaze {
+  0% {
+    transform: translateX(-50%) scaleX(0.7) scaleY(1.4);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateX(-50%) scaleX(1.4) scaleY(0.7);
+    opacity: 0.2;
+  }
+}
+
+/* Trail 1 - still hot */
+.ember:nth-child(2) {
+  width: 5px;
+  height: 5px;
+  background: radial-gradient(circle, #fff8e0 0%, #ffcc44 40%, #ff6600 70%, transparent 100%);
+  box-shadow:
+    0 0 4px 2px rgba(255, 180, 60, 0.75),
+    0 0 10px 4px rgba(255, 100, 40, 0.45);
+  opacity: 0.9;
+  animation-delay: 0.075s;
+}
+
+/* Trail 2 - orange core */
+.ember:nth-child(3) {
+  width: 4px;
+  height: 4px;
+  background: radial-gradient(circle, #ffcc66 0%, #ff8833 50%, #cc4400 80%, transparent 100%);
+  box-shadow:
+    0 0 3px 2px rgba(255, 130, 50, 0.6),
+    0 0 8px 3px rgba(220, 80, 30, 0.35);
+  opacity: 0.85;
+  animation-delay: 0.15s;
+}
+
+/* Trail 3 - cooling orange */
+.ember:nth-child(4) {
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle, #ff9944 0%, #dd5522 60%, #993311 90%, transparent 100%);
+  box-shadow:
+    0 0 3px 1px rgba(230, 100, 40, 0.5),
+    0 0 6px 2px rgba(180, 60, 20, 0.3);
+  opacity: 0.75;
+  animation-delay: 0.225s;
+}
+
+/* Trail 4 - deep orange/red */
+.ember:nth-child(5) {
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle, #ee7733 0%, #bb4422 60%, #772211 90%, transparent 100%);
+  box-shadow:
+    0 0 2px 1px rgba(200, 80, 30, 0.45);
+  opacity: 0.65;
+  animation-delay: 0.3s;
+}
+
+/* Trail 5 - red/brown */
+.ember:nth-child(6) {
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle, #cc5533 0%, #993322 60%, #552211 90%, transparent 100%);
+  box-shadow:
+    0 0 2px 1px rgba(160, 60, 25, 0.4);
+  opacity: 0.55;
+  animation-delay: 0.375s;
+}
+
+/* Trail 6 - smoky brown */
+.ember:nth-child(7) {
+  width: 2px;
+  height: 2px;
+  background: radial-gradient(circle, #aa4433 0%, #774433 70%, #443322 95%, transparent 100%);
+  box-shadow:
+    0 0 2px 1px rgba(120, 50, 30, 0.35);
+  opacity: 0.45;
+  animation-delay: 0.45s;
+}
+
+/* Trail 7 - desaturated smoke */
+.ember:nth-child(8) {
+  width: 2px;
+  height: 2px;
+  background: radial-gradient(circle, #885544 0%, #664433 70%, #332222 95%, transparent 100%);
+  box-shadow:
+    0 0 2px 1px rgba(90, 50, 35, 0.3);
+  opacity: 0.38;
+  animation-delay: 0.525s;
+}
+
+/* Trail 8 - fading smoke */
+.ember:nth-child(9) {
+  width: 2px;
+  height: 2px;
+  background: radial-gradient(circle, #665544 0%, #554433 70%, #332222 95%, transparent 100%);
+  box-shadow:
+    0 0 1px 1px rgba(70, 45, 35, 0.25);
+  opacity: 0.32;
+  animation-delay: 0.6s;
+}
+
+/* Trail 9 - ash */
+.ember:nth-child(10) {
+  width: 2px;
+  height: 2px;
+  background: radial-gradient(circle, #554444 0%, #443333 70%, #222222 95%, transparent 100%);
+  box-shadow:
+    0 0 1px 1px rgba(55, 40, 35, 0.2);
+  opacity: 0.26;
+  animation-delay: 0.675s;
+}
+
+/* Horizontal sweep with subtle arc - rises in middle, dips at ends */
+@keyframes sweep {
+  0%, 2% {
+    transform: translate(-215px, 2px);
+  }
+  25% {
+    transform: translate(-100px, -2px);
+  }
+  50% {
+    transform: translate(0px, -3px);
+  }
+  75% {
+    transform: translate(100px, -2px);
+  }
+  98%, 100% {
+    transform: translate(215px, 2px);
+  }
 }

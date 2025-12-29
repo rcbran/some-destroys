@@ -1,5 +1,5 @@
 import { Html } from '@react-three/drei'
-import { useRef, useLayoutEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import gsap from 'gsap'
 import type { ChangeEvent, Dispatch, SetStateAction, KeyboardEvent } from 'react'
 import styles from './IntroGate.module.css'
@@ -12,40 +12,30 @@ type IntroGateProps = {
 }
 
 const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
-  const [refsReady, setRefsReady] = useState(false)
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const textRef = useRef<HTMLSpanElement | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const hasInitialized = useRef(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const textRef = useRef<HTMLSpanElement>(null)
+  const moteRef = useRef<HTMLDivElement>(null)
 
-  // Callback ref for text span
-  const handleTextRef = (node: HTMLSpanElement | null) => {
-    textRef.current = node
-    if (node && inputRef.current && !refsReady) {
-      setRefsReady(true)
-    }
-  }
+  // Set mounted after first render with a small delay to ensure Html portal is ready
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 50)
+    return () => clearTimeout(timer)
+  }, [])
 
-  // Callback ref for input
-  const handleInputRef = (node: HTMLInputElement | null) => {
-    inputRef.current = node
-    if (node && textRef.current && !refsReady) {
-      setRefsReady(true)
-    }
-  }
-
-  useLayoutEffect(() => {
-    if (!refsReady) {
-      return
-    }
+  useEffect(() => {
+    if (!mounted) return
 
     const inputEl = inputRef.current
     const textEl = textRef.current
+    const moteEl = moteRef.current
 
-    if (!inputEl || !textEl) {
-      return
-    }
+    if (!inputEl || !textEl || !moteEl) return
 
-    // Ensure a clean slate (important for StrictMode mount/unmount cycles)
-    textEl.innerHTML = ''
+    // Prevent double-run in StrictMode
+    if (hasInitialized.current) return
+    hasInitialized.current = true
 
     // Split text into individual characters
     const message = 'Not all magic protects.'
@@ -59,65 +49,81 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
       chars.push(span)
     })
 
-    const ctx = gsap.context(() => {
-      const timeline = gsap.timeline()
+    const timeline = gsap.timeline()
 
-      // Ensure input starts hidden. We'll reveal it after the text animation completes.
-      gsap.set(inputEl, { autoAlpha: 0 })
+    // Ensure input and mote start hidden
+    gsap.set(inputEl, { autoAlpha: 0 })
+    gsap.set(moteEl, { autoAlpha: 0 })
 
-      // Random scatter animation with initial delay
-      timeline
-        .from(chars, {
-          x: () => gsap.utils.random(-50, 50),
-          y: () => gsap.utils.random(-50, 50),
-          opacity: 0,
-          rotation: () => gsap.utils.random(-25, 25),
-          duration: 1,
-          stagger: 0.06,
-          delay: 0.75,
+    // Random scatter animation with initial delay
+    timeline
+      .from(chars, {
+        x: () => gsap.utils.random(-50, 50),
+        y: () => gsap.utils.random(-50, 50),
+        opacity: 0,
+        rotation: () => gsap.utils.random(-25, 25),
+        duration: 1,
+        stagger: 0.06,
+        delay: 0.75,
+        ease: 'power2.out',
+      })
+      // Fade mote in right after text finishes and start ember animation
+      .to(
+        moteEl,
+        {
+          autoAlpha: 1,
+          duration: 0.5,
           ease: 'power2.out',
-        })
-        // Fade input in AFTER text finishes, with a 1s pause
-        .to(
-          inputEl,
-          {
-            autoAlpha: 1,
-            duration: 0.6,
-            ease: 'power2.out',
-            onComplete: () => {
-              // inputEl.focus()
-            },
+          onStart: () => {
+            const embers = moteEl.querySelectorAll('[data-ember]')
+            embers.forEach((el) => {
+              ;(el as HTMLElement).style.animationPlayState = 'running'
+            })
           },
-          '+=1'
-        )
-    }, textEl)
+        },
+        '+=0.2'
+      )
+      // Fade input in shortly after
+      .to(
+        inputEl,
+        {
+          autoAlpha: 1,
+          duration: 0.6,
+          ease: 'power2.out',
+        },
+        '+=0.5'
+      )
 
     return () => {
-      ctx.revert()
-      // Remove dynamically created spans so re-mounts start clean
-      textEl.innerHTML = ''
+      timeline.kill()
     }
-  }, [refsReady])
+  }, [mounted])
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setValue(event.target.value)
-  }
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setValue(event.target.value)
+    },
+    [setValue]
+  )
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      if (value.trim().toLowerCase() === target) {
-        onUnlock()
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        if (value.trim().toLowerCase() === target) {
+          onUnlock()
+        }
       }
-    }
-  }
+    },
+    [value, target, onUnlock]
+  )
 
   return (
     <Html fullscreen>
       <div className={styles.panel}>
         <label className={styles.prompt}>
-          <span ref={handleTextRef} className={styles.promptText} />
+          <span ref={textRef} className={styles.promptText} />
           <input
-            ref={handleInputRef}
+            ref={inputRef}
             type="text"
             value={value}
             onChange={handleChange}
@@ -126,6 +132,13 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
             autoComplete="off"
             className={styles.input}
           />
+          <div ref={moteRef} className={styles.mote} aria-hidden="true">
+            <div className={styles.trail}>
+              {Array.from({ length: 10 }, (_, i) => (
+                <div key={i} className={styles.ember} data-ember />
+              ))}
+            </div>
+          </div>
         </label>
       </div>
     </Html>
