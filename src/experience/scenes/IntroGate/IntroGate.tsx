@@ -1,21 +1,17 @@
 import { Html } from '@react-three/drei'
 import { useRef, useCallback, useState } from 'react'
-import type { ChangeEvent, Dispatch, SetStateAction, KeyboardEvent } from 'react'
 import styles from './IntroGate.module.css'
 import useIntroGateAnimation from './useIntroGateAnimation'
 
 type IntroGateProps = {
-  value: string
-  setValue: Dispatch<SetStateAction<string>>
-  target: string
   onUnlock: () => void
 }
 
-const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
+const IntroGate = ({ onUnlock }: IntroGateProps) => {
   // Track when panel element is mounted in the DOM via callback ref
   const [panelEl, setPanelEl] = useState<HTMLDivElement | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const textRef = useRef<HTMLSpanElement>(null)
+  const text1Ref = useRef<HTMLSpanElement>(null)
+  const text2Ref = useRef<HTMLSpanElement>(null)
   const moteRef = useRef<HTMLDivElement>(null)
 
   // Callback ref to detect when panel is mounted
@@ -24,41 +20,21 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
   }, [])
 
   // All GSAP animation logic handled in separate hook
-  useIntroGateAnimation({ panelEl, inputRef, textRef, moteRef })
-
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setValue(event.target.value)
-    },
-    [setValue]
-  )
-
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'Enter') {
-        if (value.trim().toLowerCase() === target) {
-          onUnlock()
-        }
-      }
-    },
-    [value, target, onUnlock]
-  )
+  // Cinematic sequence auto-transitions via onComplete
+  useIntroGateAnimation({
+    panelEl,
+    text1Ref,
+    text2Ref,
+    moteRef,
+    onComplete: onUnlock,
+  })
 
   return (
     <Html fullscreen>
       <div ref={panelRefCallback} className={styles.panel}>
-        <label className={styles.prompt}>
-          <span ref={textRef} className={styles.promptText} />
-          <input
-            ref={inputRef}
-            type="text"
-            value={value}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            aria-label={`Unlock phrase: ${target}`}
-            autoComplete="off"
-            className={styles.input}
-          />
+        <div className={styles.prompt}>
+          <span ref={text1Ref} className={styles.promptText} />
+          <span ref={text2Ref} className={styles.promptTextReveal} />
           <div ref={moteRef} className={styles.mote} aria-hidden="true">
             <div className={styles.trail}>
               {Array.from({ length: 10 }, (_, i) => (
@@ -66,7 +42,7 @@ const IntroGate = ({ value, setValue, target, onUnlock }: IntroGateProps) => {
               ))}
             </div>
           </div>
-        </label>
+        </div>
       </div>
     </Html>
   )

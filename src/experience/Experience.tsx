@@ -1,12 +1,15 @@
-import { Suspense } from 'react'
+import { Suspense, useState, useCallback } from 'react'
 import { Canvas } from '@react-three/fiber'
 import IntroGate from './scenes/IntroGate/IntroGate'
 import MainScene from './scenes/MainScene/MainScene'
 import PostFX from '../systems/post/PostFX.tsx'
-import useGateInput from '../systems/input/useGateInput'
 
 const Experience = () => {
-  const gate = useGateInput()
+  const [introComplete, setIntroComplete] = useState(false)
+
+  const handleIntroComplete = useCallback(() => {
+    setIntroComplete(true)
+  }, [])
 
   return (
     <Canvas
@@ -15,16 +18,10 @@ const Experience = () => {
       camera={{ fov: 45, position: [0, 1.2, 6] }}
     >
       <Suspense fallback={null}>
-        {gate.unlocked ? (
-          <MainScene />
-        ) : (
-          <IntroGate
-            value={gate.value}
-            setValue={gate.setValue}
-            target={gate.target}
-            onUnlock={gate.handleUnlock}
-          />
-        )}
+        {/* Always render MainScene so world is visible behind intro */}
+        <MainScene />
+        {/* IntroGate overlay - unmounts after animation completes */}
+        {!introComplete && <IntroGate onUnlock={handleIntroComplete} />}
         <PostFX />
       </Suspense>
     </Canvas>

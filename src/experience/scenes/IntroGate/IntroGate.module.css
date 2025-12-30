@@ -9,6 +9,13 @@
   width: 100%;
   height: 100%;
   border-radius: 0.75rem;
+  background: #0a0a0a;
+  transition: background 1.5s ease-out;
+}
+
+/* Transparent background state - reveals world behind */
+.panel.revealed {
+  background: transparent;
 }
 
 /* Prompt container - holds text, input, and ember trail */
@@ -25,23 +32,45 @@
 
 /* Text container for animated character reveal */
 .promptText {
+  position: relative;
   white-space: nowrap;
   display: inline-block;
 }
 
+/* Second text - "some destroys" reveal with emphasis */
+.promptTextReveal {
+  position: relative;
+  white-space: nowrap;
+  display: inline-block;
+  margin-left: 0.4em;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
 /* Individual character styling with smooth transitions */
-.promptText span {
-  transition: color 0.15s ease-out, text-shadow 0.15s ease-out;
+.promptText span,
+.promptTextReveal span {
+  transition: color 0.15s ease-out, text-shadow 0.15s ease-out, transform 0.15s ease-out;
 }
 
 /* Hot glow effect applied when ember passes below character */
-.promptText span.hot {
+.promptText span.hot,
+.promptTextReveal span.hot {
   color: #fffef8;
   opacity: 0.9;
   text-shadow:
     0 0 4px rgba(255, 255, 240, 0.8),
     0 0 8px rgba(255, 200, 80, 0.6),
     0 0 12px rgba(255, 120, 40, 0.4);
+}
+
+/* Extra emphasis glow for reveal text when hot */
+.promptTextReveal span.hot {
+  text-shadow:
+    0 0 6px rgba(255, 255, 240, 0.9),
+    0 0 12px rgba(255, 200, 80, 0.7),
+    0 0 18px rgba(255, 120, 40, 0.5),
+    0 0 24px rgba(255, 80, 20, 0.3);
 }
 
 /* Input field - starts hidden, fades in after text animation */
@@ -96,8 +125,8 @@
 .ember {
   position: absolute;
   border-radius: 50%;
-  transform: translate(-215px, 2px);
-  animation: sweep 4s ease-in-out infinite alternate;
+  transform: translateX(-215px);
+  animation: sweep 2s linear forwards;
   animation-play-state: paused;
 }
 
@@ -249,24 +278,31 @@
 }
 
 /* ============================================
+   ASH PARTICLES - Exit animation dissolve effect
+   ============================================ */
+
+.ashParticle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, #ffcc66 0%, #ff8833 40%, #cc4400 70%, transparent 100%);
+  box-shadow:
+    0 0 2px 1px rgba(255, 150, 60, 0.6),
+    0 0 4px 2px rgba(255, 100, 40, 0.3);
+}
+
+/* ============================================
    ANIMATIONS
    ============================================ */
 
 /* Horizontal sweep with subtle arc - rises in middle, dips at ends */
 @keyframes sweep {
-  0%, 2% {
-    transform: translate(-215px, 2px);
+  0% {
+    transform: translateX(-215px);
   }
-  25% {
-    transform: translate(-100px, -2px);
-  }
-  50% {
-    transform: translate(0px, -3px);
-  }
-  75% {
-    transform: translate(100px, -2px);
-  }
-  98%, 100% {
-    transform: translate(215px, 2px);
+  100% {
+    transform: translateX(215px);
   }
 }
